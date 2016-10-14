@@ -64,23 +64,29 @@ print "Average error (method 1) "+str(avg_error_1)
 
 
 '''
-np.array(all_samples).astype(np.float)
+Things that I could plot:
 
-from sklearn import linear_model
-reg = linear_model.LinearRegression()
-reg.fit (all_samples[:-1], targets[:-1]);
-betas = reg.coef_
+* 2 hluti á sömu mynd:
+predicted value og actual value, þá bara sem fall af myndinni
+Inn á þessa mynd mætti teikna fallið sem við fáum með prediction módelinu
 
-lastImg = nib.load(allImageSrc[i])
-lastImgData = img.get_data();
+* Reiknað errorinn (óþarft að plotta)
 
-# Get the age and the center img slice:
-lastBrainLine = lastImgData[imgQuarterX, :, imgTopQuarterZ, 0]
-lastBrainLine = np.array(lastBrainLine, dtype='int_')
+----------
+Þegar það er búið:
 
-print "Our predicted value for last data point:"
-print reg.predict(lastBrainLine)[0]
-print "Our actual value for last data point:"
-print lastTarget
+Setja upp einfalt forrit sem plottar f(x) = aldur þar
+sem x er feature.
+
+Plotta svo upp öll möguleg svoleiðis feature og sjá
+hvar fylgnin er.
+
+Hvernig sjáum við fylgni?
+
+Til dæmis:
+
+
+
+
 '''
 
