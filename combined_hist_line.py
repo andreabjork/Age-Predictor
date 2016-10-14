@@ -22,14 +22,8 @@ with open('data/targets.csv', 'rb') as f:
 
 targets = np.array(targets, dtype='int_')
 lastTarget = targets[-1]
-# For now, try fitting the data with linear reg_hression using
-# only one dimension of the image data (i.e. by fixing 2 two variables
-# and keeping 1 degree of freedom) 
-#
-# For this we'll be choosing 1/4th part of x-axis and 3/4th of y-axis, simply
-# to catch the most interesting area of the brain
+
 hist_max_value = 4500
-total_histogram = [0]*hist_max_value
 histograms = []
 all_samples = []
 n_samples = len(allImageSrc);
@@ -42,7 +36,6 @@ for i in range(0,len(allImageSrc)):
 	## for histogram
 	for val in imgData.flatten().tolist():
 		if val < hist_max_value:
-			total_histogram[val] += 1
 			hist[val] += 1
 	histograms.append(hist)
 
@@ -51,11 +44,7 @@ for i in range(0,len(allImageSrc)):
 	brainLine = np.array(brainLine, dtype='int_')
 	all_samples.append(brainLine)
 
-hist_cat = range(hist_max_value)
-width = 1/1.5
-#plt.plot(hist_cat,total_histogram)
-plt.bar(hist_cat,total_histogram,width,color="blue")
-plt.show()
+
 total_error_h = 0
 total_error_l = 0
 total_error_c = 0
