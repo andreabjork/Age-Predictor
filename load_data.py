@@ -6,6 +6,7 @@ import os
 import numpy as np
 import nibabel as nib
 import matplotlib.pyplot as plt
+import feature_extraction as ftex
 # Sci-Kit Learn offers a lot of Machine Learning stuff
 import sklearn
 
@@ -21,14 +22,10 @@ from sklearn.externals import joblib
 # Don't forget to exclude them from the git repo.
 data_path = './data/'
 
-# Read targets.csv into a dictionary 'age' of the form: 'line number':age
-age = {}
+# Read targets.csv into a list
+age = []
 with open(data_path+"targets.csv") as f:
-	linecounter = 0
-	for line in f:
-		linecounter += 1
-		line=line.split()
-		age[linecounter] = line[0]
+	age = [int(x.strip('\n')) for x in f.readlines()]
 
 # Function to display row of image slices
 def show_slices(slices):
@@ -36,6 +33,9 @@ def show_slices(slices):
 	for i, slice in enumerate(slices):
 		axes[i].imshow(slice.T, cmap="gray", origin="lower")
 
-# Print out all age:line number pairs.
-for key,value in age.items():
-	print "age: %s line: %d"%(value,key)
+# Simple test feature: Try averaging the intensity value of each person's image.
+average = ftex.extract_average(data_path,len(age))
+
+# Plot the age - average pairs
+plt.plot(age,average)
+plt.savefig("avg_test.png")
