@@ -85,4 +85,3 @@ avg_error_c = total_error_c/n_samples
 print "Average error (histogram): "+str(avg_error_h)
 print "Average error (brainline): "+str(avg_error_l)
 print "Average error (combined):  "+str(avg_error_c)
-
