@@ -20,7 +20,7 @@ allImageSrc = glob.glob("../data/set_train/*")
 #
 # For this we'll be choosing 1/4th part of x-axis and 3/4th of y-axis, simply
 # to catch the most interesting area of the brain
-hist_max_value = 4400
+hist_max_value = 1000
 histograms = []
 for i in range(0,len(allImageSrc)):
 	print str((i*100)/len(allImageSrc))+"% working..."
@@ -32,7 +32,7 @@ for i in range(0,len(allImageSrc)):
 			hist[val] += 1
 	histograms.append(hist)
 
-output = open('histogram.pkl', 'wb')
+output = open('histogram_1000.pkl', 'wb')
 pickle.dump(histograms, output)
 output.close()
 

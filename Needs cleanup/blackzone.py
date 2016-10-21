@@ -5,17 +5,19 @@ import csv
 import numpy as np
 import numpy.linalg as nlg
 from sklearn import linear_model
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
 
-imgShape = nib.load('data/set_train/train_1.nii').shape
+imgShape = nib.load('../data/set_train/train_1.nii').shape
 
 imgQuarterX = imgShape[0]/2
 imgTopQuarterZ = imgShape[2]*3/4
 
 # Fetch all directory listings of set_train
-allImageSrc = glob.glob("data/set_train/*")
+allImageSrc = glob.glob("../data/set_train/*")
 
 # Get the targets
-with open('data/targets.csv', 'rb') as f:
+with open('../data/targets.csv', 'rb') as f:
     reader = csv.reader(f)
     targets = list(reader)
 
@@ -60,8 +62,10 @@ for i in range(0, len(all_samples)):
 	testTarget = targets[i]
 
 
-	reg = linear_model.LinearRegression()
+	#reg = linear_model.LinearRegression()
 	#reg = linear_model.Lasso(alpha = 0.1)
+	reg = make_pipeline(PolynomialFeatures(2), linear_model.LinearRegression())
+	reg.fit (trainData, trainTargets);
 	reg.fit (trainData, trainTargets);
 
 	testPrediction = reg.predict(testData)[0][0];
