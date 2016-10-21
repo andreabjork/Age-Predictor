@@ -6,17 +6,17 @@ import pickle
 import math
 from printProgress import printProgress
 featuresDir =  os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# imgDirRelPath must be a string and maxValue must be an integer
-def extractHistograms(imgDirRelPath, maxValue = 4000, nPartitions = -1):
+# imgDirFullPath must be a string and maxValue must be an integer
+def extractHistograms(imgDirFullPath, maxValue = 4000, nPartitions = -1):
 	if nPartitions == -1: nPartitions=maxValue
 	hist_max_value = int(maxValue)
 	clusterSize = math.ceil((maxValue*1.)/nPartitions)
-	imgPath = os.path.join(imgDirRelPath,"*")
+	imgPath = os.path.join(imgDirFullPath,"*")
 	print "\nhist_max_value = "+str(hist_max_value)+"  "+str(type(hist_max_value))
 	print "imgPath = "+imgPath+""
 	print "number of classes = "+str(nPartitions)+"\n\n"
 
-	outputFileName = os.path.join(featuresDir,"histograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirRelPath.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"histograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		histograms = pickle.load(save)
@@ -52,11 +52,11 @@ def extractHistograms(imgDirRelPath, maxValue = 4000, nPartitions = -1):
 	print "Done"
 	return histograms
 
-def extractAverages(imgDirRelPath):
-	imgPath = os.path.join(imgDirRelPath,"*")
+def extractAverages(imgDirFullPath):
+	imgPath = os.path.join(imgDirFullPath,"*")
 	print "imgPath = "+imgPath+""
 
-	outputFileName = os.path.join(featuresDir,"averages_"+imgDirRelPath.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"averages_"+imgDirFullPath.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		averages = pickle.load(save)
@@ -87,11 +87,11 @@ def extractAverages(imgDirRelPath):
 	print "Done"
 	return averages
 
-def flattenedImages(imgDirRelPath):
-	imgPath = os.path.join(imgDirRelPath,"*")
+def flattenedImages(imgDirFullPath):
+	imgPath = os.path.join(imgDirFullPath,"*")
 	print "imgPath = "+imgPath+""
 
-	outputFileName = os.path.join(featuresDir,"flattened_"+imgDirRelPath.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"flattened_"+imgDirFullPath.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		images = pickle.load(save)
