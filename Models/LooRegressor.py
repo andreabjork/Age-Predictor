@@ -3,9 +3,9 @@ from sklearn.base import ClassifierMixin
 import numpy as np
 import operator
 
-class VotingRegressor(BaseEstimator, ClassifierMixin):
+class LooRegressor(BaseEstimator, ClassifierMixin):
     """
-    VotingRegressor for scikit-learn estimators.
+    LooRegressor for scikit-learn estimators.
 
     Parameters
     ----------
@@ -18,13 +18,13 @@ class VotingRegressor(BaseEstimator, ClassifierMixin):
         the predicted class labels using the given weights will be used.
 
     """
-    def __init__(self, regs, weights=None):
-        self.regs = regs
-        self.weights = weights
+    def __init__(self, reg):
+        self.reg = reg
+        self.regs = []
 
     def fit(self, X, y):
         """
-        Fit the scikit-learn estimators.
+        Fit the model.
 
         Parameters
         ----------
@@ -35,8 +35,14 @@ class VotingRegressor(BaseEstimator, ClassifierMixin):
             Class labels
 
         """
-        for reg in self.regs:
-            reg.fit(X, y)
+        npX = np.array(X)
+        npY = np.array(y)
+        self.regs = [self.reg]*npX.shape[0]
+        for i in range(len(self.regs)):
+            reg = self.regs[i]
+            X_i = np.concatenate((npX[:i],npX[i+1:]))
+            y_i = np.concatenate((npY[:i],npY[i+1:]))
+            reg.fit(X_i, y_i)
 
     def predict(self, X):
         """
@@ -49,14 +55,11 @@ class VotingRegressor(BaseEstimator, ClassifierMixin):
         ----------
 
         y : list or numpy array, shape = [n_samples]
-            Weighted averages of the predictions of the estimators
+            Average prediction of the leave-one-out model.
 
         """
 
         self.predictions_ = np.asarray([reg.predict(X) for reg in self.regs])
-        if self.weights:
-            y = sum([p*w for p,w in zip(self.predictions_,self.weights)])/sum(self.weights)
-        else:
-            y = (sum(self.predictions_)*1.)/len(self.predictions_)
+        y = (sum(self.predictions_)*1.)/len(self.predictions_)
 
         return y
