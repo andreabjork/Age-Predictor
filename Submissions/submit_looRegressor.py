@@ -19,6 +19,7 @@ histograms = np.array(extractHistograms('../data/set_train',2500))
 
 print "Training model"
 model = pipeline.make_pipeline(
+			PolynomialFeatures(2),
 			LooRegressor(
 				VotingRegressor(regs=[
 					LinearRegression(),

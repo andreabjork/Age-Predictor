@@ -52,6 +52,51 @@ def extractHistograms(imgDirFullPath, maxValue = 4000, nPartitions = -1):
 	print "Done"
 	return histograms
 
+def extractBrainSliceHistograms(imgDirFullPath, numSlices):
+	if nPartitions == -1: nPartitions=maxValue
+	hist_max_value = int(maxValue)
+	clusterSize = math.ceil((maxValue*1.)/nPartitions)
+	imgPath = os.path.join(imgDirFullPath,"*")
+	print "\nhist_max_value = "+str(hist_max_value)+"  "+str(type(hist_max_value))
+	print "imgPath = "+imgPath+""
+	print "number of classes = "+str(nPartitions)+"\n\n"
+
+	outputFileName = os.path.join(featuresDir,"brainslicehistograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		histograms = pickle.load(save)
+		save.close()
+		return histograms
+
+	# Fetch all directory listings of set_train
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	histograms = []
+	n_samples = len(allImageSrc);
+	print "Found "+str(n_samples)+" images!"
+	print "Preparing the data"
+	for i in range(0,n_samples):
+		hist = [0]*nPartitions
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+
+		## for histogram
+		for val in imgData.flatten().tolist():
+			if val < hist_max_value:
+				c = int(val/clusterSize)
+				hist[c] += 1
+		histograms.append(hist)
+		printProgress(i, n_samples)
+
+	printProgress(n_samples, n_samples)
+	print "Done"
+	print "\nStoring the features in "+outputFileName
+
+	output = open(outputFileName,"wb")
+	pickle.dump(histograms,output)
+	output.close()
+	print "Done"
+	return histograms
+
 def extractAverages(imgDirFullPath):
 	imgPath = os.path.join(imgDirFullPath,"*")
 	print "imgPath = "+imgPath+""

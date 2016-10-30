@@ -7,8 +7,7 @@ from sklearn.linear_model import *
 from sklearn.ensemble import *
 from sklearn.model_selection import cross_val_score
 
-from extract_features import *
-from printProgress import printProgress
+from Features.extract_features import *
 
 # Get the targets
 with open('../data/targets.csv', 'rb') as f:
@@ -27,7 +26,7 @@ print "Testing model"
 testData = np.array(extractHistograms('../data/set_test',2500))
 predictions = model.predict(testData).flatten().tolist()
 print predictions
-with open('results.csv', 'w') as csvfile:
+with open('extraTrees.csv', 'w') as csvfile:
 	resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
 	resultWriter.writerow(['ID','Prediction'])
 	for i in range(0,len(predictions)):

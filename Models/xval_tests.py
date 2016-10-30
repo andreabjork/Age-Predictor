@@ -21,21 +21,36 @@ with open('../data/targets.csv', 'rb') as f:
 
 targets = [float(x[0]) for x in targets]
 
-histograms = extractHistograms('../data/set_train',2500)
-print "Shape of histograms:"
-print np.array(histograms).shape
+data = extractAverages('../data/set_train')
+print "Shape of data:"
+print np.array(data).shape
 
 print "Estimating error:"
 
 models = {
 	"ExtraTreesRegressor (submission)" : pipeline.make_pipeline(
-		ExtraTreesRegressor(n_estimators=100,warm_start=True,bootstrap=True,oob_score=True)
+		ExtraTreesRegressor(n_estimators=100,bootstrap=True,oob_score=True)
 	),
-	"LooRegressor" : LooRegressor(ExtraTreesRegressor(n_estimators=100,warm_start=True,bootstrap=True,oob_score=True)),	
-	"LooRegressor (RidgeCV)" : LooRegressor(RidgeCV())
+	"Linear (Poly = 2)" : pipeline.make_pipeline(
+			PolynomialFeatures(2),
+			LinearRegression()
+	),
+	"Ridge (Poly = 2)" : pipeline.make_pipeline(
+			PolynomialFeatures(2),
+			Ridge()
+	),
+	"RidgeCV (Poly = 2)" : pipeline.make_pipeline(
+			PolynomialFeatures(2),
+			RidgeCV()
+	),
+	"ExtraTreesRegressor (Poly = 2)" : pipeline.make_pipeline(
+			PolynomialFeatures(2),
+			ExtraTreesRegressor(n_estimators=100,bootstrap=True,oob_score=True)
+	)
+	#"LooRegressor (RidgeCV)" : LooRegressor(RidgeCV())
 }
 
-hist_targ = zip(histograms,targets)
+hist_targ = zip(data,targets)
 shuffle(hist_targ)
 X_shuffled, y_shuffled = zip(*hist_targ)
 
@@ -58,6 +73,6 @@ for i in range(n_tests):
 		else:
 			errors[key] = (average_error*1.)/n_tests
 
-for key, error in errors.items():
+for key, error in sorted(errors.items()):
 	print "Average error: %f [%s]"%(error,key)
 
