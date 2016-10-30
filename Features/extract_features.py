@@ -97,6 +97,37 @@ def extractBrainSliceHistograms(imgDirFullPath, numSlices):
 	print "Done"
 	return histograms
 
+def extractBlackzones(imgDirFullPath, blackThreshold=450):
+	imgPath = os.path.join(imgDirFullPath,"*")
+	outputFileName = os.path.join(featuresDir,"histograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		blackzones = pickle.load(save)
+		save.close()
+		return blackzones
+
+	# Fetch all directory listings of set_train
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	blackzones = []
+	n_samples = len(allImageSrc)
+
+	for i in range(0,n_samples):
+		blackpixels = 0
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		# Center of the brain that includes the black zone:
+		brainZone = imgData[52:120, 65:150, 55:110, 0]
+		blackpixels = 0
+
+		for j in range(0,len(brainZone)):
+		for k in range(0, len(brainZone[j])):
+			for l in range(0, len(brainZone[j][k])):
+				if(brainZone[j][k][l] < 450): blackpixels += 1
+
+		print "Percentage done: "+str((i*100)/len(allImageSrc))
+
+		blackzones.append([black_pixels])
+
 def extractAverages(imgDirFullPath):
 	imgPath = os.path.join(imgDirFullPath,"*")
 	print "imgPath = "+imgPath+""
