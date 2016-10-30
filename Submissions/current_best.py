@@ -13,9 +13,9 @@ from Features.extract_features import *
 with open('../data/targets.csv', 'rb') as f:
     reader = csv.reader(f)
     targets = list(reader)
-
 targets = np.array([float(x[0]) for x in targets])
 
+# Extract intensity histograms from the 3D-images
 histograms = np.array(extractHistograms('../data/set_train',2500))
 
 print "Training model"
@@ -28,7 +28,8 @@ model.fit(histograms,targets)
 print "Testing model"
 testData = np.array(extractHistograms('../data/set_test',2500))
 predictions = model.predict(testData).flatten().tolist()
-print predictions
+
+#Write predictions of test data to csv file
 with open('randomForest.csv', 'w') as csvfile:
 	resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
 	resultWriter.writerow(['ID','Prediction'])

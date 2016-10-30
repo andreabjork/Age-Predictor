@@ -1,21 +1,31 @@
 import os
 import inspect
 import nibabel as nib
+import numpy as np
+import scipy as sp
+import scipy.ndimage.interpolation as interpolation
 import glob
 import pickle
 import math
 from printProgress import printProgress
+
+from sklearn.feature_extraction.image import grid_to_graph
+from sklearn.cluster import AgglomerativeClustering
+
+# The directory to store the precomputed features
 featuresDir =  os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
 # imgDirFullPath must be a string and maxValue must be an integer
+# nPartitions is the "resolution" of the histogram
 def extractHistograms(imgDirFullPath, maxValue = 4000, nPartitions = -1):
 	if nPartitions == -1: nPartitions=maxValue
 	hist_max_value = int(maxValue)
+
+	# The number of different intensities per point of the histogram
 	clusterSize = math.ceil((maxValue*1.)/nPartitions)
 	imgPath = os.path.join(imgDirFullPath,"*")
-	print "\nhist_max_value = "+str(hist_max_value)+"  "+str(type(hist_max_value))
-	print "imgPath = "+imgPath+""
-	print "number of classes = "+str(nPartitions)+"\n\n"
 
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
 	outputFileName = os.path.join(featuresDir,"histograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -23,304 +33,128 @@ def extractHistograms(imgDirFullPath, maxValue = 4000, nPartitions = -1):
 		save.close()
 		return histograms
 
-	# Fetch all directory listings of set_train
+	# Fetch all directory listings of set_train and sort them on the image number
 	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
 	histograms = []
 	n_samples = len(allImageSrc);
 	print "Found "+str(n_samples)+" images!"
 	print "Preparing the data"
+	printProgress(0, n_samples)
 	for i in range(0,n_samples):
 		hist = [0]*nPartitions
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
 
-		## for histogram
+		# Count occurances of each intensity below the maxValue
 		for val in imgData.flatten().tolist():
 			if val < hist_max_value:
 				c = int(val/clusterSize)
 				hist[c] += 1
 		histograms.append(hist)
-		printProgress(i, n_samples)
+		printProgress(i+1, n_samples)
 
-	printProgress(n_samples, n_samples)
-	print "Done"
 	print "\nStoring the features in "+outputFileName
-
 	output = open(outputFileName,"wb")
 	pickle.dump(histograms,output)
 	output.close()
 	print "Done"
+
 	return histograms
 
-def extractBrainSliceHistograms(imgDirFullPath, numSlices):
-	if nPartitions == -1: nPartitions=maxValue
-	hist_max_value = int(maxValue)
-	clusterSize = math.ceil((maxValue*1.)/nPartitions)
+# This was an attempt at a more sophisticated feature using agglomerative clustering to define "colors"
+# and then taking a histogram of those color. This did not prove to give better results.
+def extractHierarchicalClusters(imgDirFullPath, n_clusters=10, ignoreCache=False):
 	imgPath = os.path.join(imgDirFullPath,"*")
-	print "\nhist_max_value = "+str(hist_max_value)+"  "+str(type(hist_max_value))
-	print "imgPath = "+imgPath+""
-	print "number of classes = "+str(nPartitions)+"\n\n"
 
-	outputFileName = os.path.join(featuresDir,"brainslicehistograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
-	if os.path.isfile(outputFileName):
+	outputFileName = os.path.join(featuresDir,"hierarchicalclusters_"+str(n_clusters)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName) and not ignoreCache:
 		save = open(outputFileName,'rb')
-		histograms = pickle.load(save)
+		clusters = pickle.load(save)
 		save.close()
-		return histograms
+		return clusters
 
 	# Fetch all directory listings of set_train
 	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
-	histograms = []
+	clusters = []
 	n_samples = len(allImageSrc);
 	print "Found "+str(n_samples)+" images!"
 	print "Preparing the data"
+	printProgress(0, n_samples)
 	for i in range(0,n_samples):
-		hist = [0]*nPartitions
+		hist = [0]*n_clusters
 		img = nib.load(allImageSrc[i])
-		imgData = img.get_data();
+		imgData_original = np.asarray(img.get_data()[:,:,:,0])
+		# Resize to 10% of original size for faster processing
+		imgData_resized = sp.ndimage.interpolation.zoom(imgData_original,0.10)
+		imgData = np.reshape(imgData_resized,(-1,1))
 
-		## for histogram
-		for val in imgData.flatten().tolist():
-			if val < hist_max_value:
-				c = int(val/clusterSize)
-				hist[c] += 1
-		histograms.append(hist)
-		printProgress(i, n_samples)
+		connectivity = grid_to_graph(*imgData_resized.shape)
+		ward = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',connectivity=connectivity)
+		labels = ward.fit_predict(imgData).flatten().tolist()
 
-	printProgress(n_samples, n_samples)
+		for lab in labels:
+			hist[lab] += 1
+		clusters.append(hist)
+		printProgress(i+1, n_samples)
 	print "Done"
 	print "\nStoring the features in "+outputFileName
 
 	output = open(outputFileName,"wb")
-	pickle.dump(histograms,output)
+	pickle.dump(clusters,output)
 	output.close()
 	print "Done"
-	return histograms
+	return clusters
 
-def extractBlackzones(imgDirFullPath, blackThreshold=450):
+# The AgglomerativeClusters approach was suffering from the severely reduced "resolution" of the images
+# and this was an attempt to improve on that by only looking at one slice of the image instead of reducing the
+# "resolution". This too was unsuccessful.
+def extractHierarchicalClustersSingleSlice(imgDirFullPath, n_clusters=10, ignoreCache=False):
 	imgPath = os.path.join(imgDirFullPath,"*")
-	outputFileName = os.path.join(featuresDir,"histograms_"+str(nPartitions)+"-"+str(hist_max_value)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
-	if os.path.isfile(outputFileName):
+
+	outputFileName = os.path.join(featuresDir,"hierarchicalclusterssingleslice_"+str(n_clusters)+"_"+imgDirFullPath.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName) and not ignoreCache:
 		save = open(outputFileName,'rb')
-		blackzones = pickle.load(save)
+		clusters = pickle.load(save)
 		save.close()
-		return blackzones
+		return clusters
 
 	# Fetch all directory listings of set_train
 	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
-	blackzones = []
-	n_samples = len(allImageSrc)
-
-	for i in range(0,n_samples):
-		blackpixels = 0
-		img = nib.load(allImageSrc[i])
-		imgData = img.get_data();
-		# Center of the brain that includes the black zone:
-		brainZone = imgData[52:120, 65:150, 55:110, 0]
-		blackpixels = 0
-
-		for j in range(0,len(brainZone)):
-		for k in range(0, len(brainZone[j])):
-			for l in range(0, len(brainZone[j][k])):
-				if(brainZone[j][k][l] < 450): blackpixels += 1
-
-		print "Percentage done: "+str((i*100)/len(allImageSrc))
-
-		blackzones.append([black_pixels])
-
-def extractAverages(imgDirFullPath):
-	imgPath = os.path.join(imgDirFullPath,"*")
-	print "imgPath = "+imgPath+""
-
-	outputFileName = os.path.join(featuresDir,"averages_"+imgDirFullPath.replace(os.sep,"-")+".feature")
-	if os.path.isfile(outputFileName):
-		save = open(outputFileName,'rb')
-		averages = pickle.load(save)
-		save.close()
-		return averages
-
-	# Fetch all directory listings of set_train
-	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
-
-	averages = []
+	clusters = []
 	n_samples = len(allImageSrc);
 	print "Found "+str(n_samples)+" images!"
 	print "Preparing the data"
+	printProgress(0, n_samples)
 	for i in range(0,n_samples):
+		hist = [0]*n_clusters
+		total_intensities = [0]*n_clusters
 		img = nib.load(allImageSrc[i])
-		imgData = img.get_data().flatten().tolist();
-		avg = (sum(imgData)*1.)/len(imgData)
-		averages.append([avg])
-		printProgress(i, n_samples)
+		imgData_original = np.asarray(img.get_data()[:,:,:,0])
+		brainSlice = imgData_original[:,:,imgData_original.shape[2]/2]
+		imgData = np.reshape(brainSlice,(-1,1))
 
-	printProgress(n_samples, n_samples)
+		connectivity = grid_to_graph(*brainSlice.shape)
+		ward = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',connectivity=connectivity)
+		labels = ward.fit_predict(imgData).flatten().tolist()
+
+		for j, lab in enumerate(labels):
+			intensity = imgData[j][0]
+			total_intensities[lab] += intensity
+			hist[lab] += 1
+		avg_intensity = np.asarray(total_intensities)*1./np.asarray(hist)
+		avg_intensity = avg_intensity.flatten().tolist()
+		avg_intensity, hist = zip(*sorted(zip(avg_intensity,hist)))
+
+		clusters.append(hist)
+		printProgress(i+1, n_samples)
 	print "Done"
 	print "\nStoring the features in "+outputFileName
 
 	output = open(outputFileName,"wb")
-	pickle.dump(averages,output)
+	pickle.dump(clusters,output)
 	output.close()
 	print "Done"
-	return averages
-
-def flattenedImages(imgDirFullPath):
-	imgPath = os.path.join(imgDirFullPath,"*")
-	print "imgPath = "+imgPath+""
-
-	outputFileName = os.path.join(featuresDir,"flattened_"+imgDirFullPath.replace(os.sep,"-")+".feature")
-	if os.path.isfile(outputFileName):
-		save = open(outputFileName,'rb')
-		images = pickle.load(save)
-		save.close()
-		return images
-
-	# Fetch all directory listings of set_train
-	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
-
-	images = []
-	n_samples = len(allImageSrc);
-	print "Found "+str(n_samples)+" images!"
-	print "Preparing the data"
-	for i in range(0,n_samples):
-		img = nib.load(allImageSrc[i])
-		imgData = img.get_data().flatten().tolist();
-		images.append(imgData)
-		printProgress(i, n_samples)
-
-	printProgress(n_samples, n_samples)
-	print "Done"
-	print "\nStoring the features in "+outputFileName
-
-	output = open(outputFileName,"wb")
-	pickle.dump(images,output)
-	output.close()
-	print "Done"
-	return images
-
-# Extract no. of voxels w. intensity above 1000, 1200 and 1400 in each of 4 segments.
-# The segments are front-upper, back-upper, front-lower and back-lower.
-# The data is pickled into a list of patients which for each patient contains
-# a length 4 list with the data for each brain segment.
-def extractWhiteMatter(imgDirFullPath):
-	imgPath = os.path.join(imgDirFullPath,"*")
-	print "imgPath = "+imgPath+""
-
-	outputFileName = os.path.join(featuresDir,"whitematter_"+imgDirFullPath.replace(os.sep,"-")+".feature")
-	if os.path.isfile(outputFileName):
-		save = open(outputFileName,'rb')
-		whitematter = pickle.load(save)
-		save.close()
-		return averages
-
-	# Fetch all directory listings of set_train
-	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
-
-	whitematter = [] #averages = []
-	n_samples = len(allImageSrc);
-	print "Found "+str(n_samples)+" images!"
-	print "Preparing the data"
-
-	thresh = 1000;
-	for i in range(0,n_samples):
-		img = nib.load(allImageSrc[i])
-		imgData = img.get_data() #.flatten().tolist();
-		[xlim, ylim, zlim, Ilim] = imgData.shape
-		[x_border, z_border] = [int(xlim/2), int(zlim/2)] 
-		brainregions = [];
-		# back-lower
-		count_1000 = 0
-		count_1200 = 0
-		count_1400 = 0
-		for x in range(0,x_border):
-			for y in range(0,ylim-1):
-				for z in range(0,z_border):
-					voxel = imgData[x,y,z,0]
-					if( voxel > 1000 ): 
-						if( voxel > 1200 ):
-							if( voxel > 1400 ):  
-								count_1400 += 1
-							else:
-								count_1200 += 1
-						else:
-							count_1000 += 1
-
-		brainregions.append(count_1000);
-		brainregions.append(count_1200);
-		brainregions.append(count_1400);
-		# front-lower
-		count_1000 = 0
-		count_1200 = 0
-		count_1400 = 0
-		for x in range(x_border,xlim-1):
-			for y in range(0,ylim-1):
-				for z in range(0,z_border):
-					voxel = imgData[x,y,z,0]
-					if( voxel > 1000 ): 
-						if( voxel > 1200 ):
-							if( voxel > 1400 ):  
-								count_1400 += 1
-							else:
-								count_1200 += 1
-						else:
-							count_1000 += 1
-
-		brainregions.append(count_1000);
-		brainregions.append(count_1200);
-		brainregions.append(count_1400);
-		# back upper
-		count_1000 = 0
-		count_1200 = 0
-		count_1400 = 0
-		for x in range(0,x_border):
-			for y in range(0,ylim-1):
-				for z in range(z_border,zlim-1):
-					voxel = imgData[x,y,z,0]
-					if( voxel > 1000 ): 
-						if( voxel > 1200 ):
-							if( voxel > 1400 ):  
-								count_1400 += 1
-							else:
-								count_1200 += 1
-						else:
-							count_1000 += 1
-
-		brainregions.append(count_1000);
-		brainregions.append(count_1200);
-		brainregions.append(count_1400);
-		# front upper
-		count_1000 = 0
-		count_1200 = 0
-		count_1400 = 0
-		for x in range(x_border,xlim-1):
-			for y in range(0,ylim-1):
-				for z in range(z_border,zlim-1):
-					voxel = imgData[x,y,z,0]
-					if( voxel > 1000 ): 
-						if( voxel > 1200 ):
-							if( voxel > 1400 ):  
-								count_1400 += 1
-							else:
-								count_1200 += 1
-						else:
-							count_1000 += 1
-
-		brainregions.append(count_1000);
-		brainregions.append(count_1200);
-		brainregions.append(count_1400);
-
-		whitematter.append(brainregions)
-		printProgress(i, n_samples)
-
-	printProgress(n_samples, n_samples)
-	print "Done"
-	print "\nStoring the features in "+outputFileName
-
-	output = open(outputFileName,"wb")
-	pickle.dump(whitematter,output)
-	output.close()
-	print "Done"
-	return whitematter
-
+	return clusters
 
 def extractImgNumber(imgPath):
 	imgName = imgPath.split(os.sep)[-1]

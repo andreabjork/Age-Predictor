@@ -16,17 +16,17 @@ with open('../data/targets.csv', 'rb') as f:
 
 targets = np.array([float(x[0]) for x in targets])
 
-histograms = np.array(extractHistograms('../data/set_train',2500))
+histograms = np.array(extractHierarchicalClustersSingleSlice('../data/set_train',n_clusters=3))
 
 print "Training model"
 model = pipeline.make_pipeline(
-			VarianceThreshold(threshold=10),
+			#VarianceThreshold(threshold=10),
 			RandomForestRegressor(n_estimators=100)
 		)
 model.fit(histograms,targets)
 
 print "Testing model"
-testData = np.array(extractHistograms('../data/set_test',2500))
+testData = np.array(extractHierarchicalClustersSingleSlice('../data/set_test',n_clusters=3))
 predictions = model.predict(testData).flatten().tolist()
 print predictions
 with open('randomForest.csv', 'w') as csvfile:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys
-# Print iterations progress
+# Print iterations progress (just to make it pretty)
 def printProgress (iteration, total, prefix = 'Progress:', suffix = 'Complete', decimals = 1, barLength = 50):
     formatStr       = "{0:." + str(decimals) + "f}"
     percents        = formatStr.format(100 * (iteration / float(total)))
